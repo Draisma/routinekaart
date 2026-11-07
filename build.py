@@ -32,6 +32,7 @@ def main() -> None:
         shutil.rmtree(DIST)
     DIST.mkdir()
     (DIST / "opstaan.html").write_text(html, encoding="utf-8")
+    shutil.copy(SRC / "opstaan-icoon.png", DIST / "opstaan-icoon.png")
 
     for f in sorted(DIST.iterdir()):
         print(f"{f.name}: {f.stat().st_size} bytes")
