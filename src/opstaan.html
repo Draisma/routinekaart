@@ -259,7 +259,9 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
   var actx = null;
   function getCtx(){
     if (!actx) {
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e) {}
+      /* alleen op iPhone en iPad: daar dempt de stilschakelaar anders het geluid */
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      try { if (isIOS && navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e) {}
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       actx = new AC();
