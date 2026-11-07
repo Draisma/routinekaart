@@ -1,0 +1,13 @@
+{
+  // Statische site: Cloudflare serveert de map dist/ (gebouwd met `python3 build.py`).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "routinekaart",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [
+    { "pattern": "opstaan.fldr.nl", "custom_domain": true }
+  ]
+}

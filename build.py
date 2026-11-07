@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bouwt dist/ uit src/: plakt de iconen als data-URI in de pagina.
+"""Bouwt dist/ uit src/: plakt de iconen als data-URI in de pagina (dist/index.html).
 
 Gebruik: python3 build.py
 Alleen de standaardbibliotheek, geen installaties nodig.
@@ -31,7 +31,7 @@ def main() -> None:
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir()
-    (DIST / "opstaan.html").write_text(html, encoding="utf-8")
+    (DIST / "index.html").write_text(html, encoding="utf-8")
     shutil.copy(SRC / "opstaan-icoon.png", DIST / "opstaan-icoon.png")
 
     for f in sorted(DIST.iterdir()):
