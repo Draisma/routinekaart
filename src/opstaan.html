@@ -1,3 +1,13 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Opstaan">
+<meta name="theme-color" content="#FFF8EC">
+<link rel="icon" href="__ICON_2600__">
 <title>Routinekaart Opstaan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +22,8 @@
   color-scheme: light;
 }
 html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 .app{display:flex;flex-direction:column;gap:14px;padding-block:14px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));max-width:1400px;margin:0 auto;box-sizing:border-box}
 
@@ -80,7 +92,8 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
 .celebrate-card img{width:min(160px,40vw);height:auto;animation:bounce 1.2s ease-in-out infinite}
 .celebrate-card h2{margin:0;font-size:clamp(56px,12vw,96px);line-height:1;font-weight:700}
 .celebrate-card p{margin:0;font-size:clamp(20px,4vw,28px);font-weight:500;color:var(--ink-soft)}
-.celebrate-card .ctl{font-size:20px;min-height:56px;padding:0 28px;margin-top:8px}
+.celebrate-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:8px}
+.celebrate-card .ctl{font-size:20px;min-height:56px;padding:0 28px}
 @keyframes bounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-14px) rotate(4deg)}}
 
 /* iPad en groter scherm: alles past op één scherm */
@@ -101,6 +114,9 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
   .final.ready .front,.celebrate-card img{animation:none}
 }
 </style>
+</head>
+<body>
+
 
 <div class="app">
   <header>
@@ -131,7 +147,10 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     <img id="party" alt="">
     <h2 id="celebrateTitle">Klaar!</h2>
     <p>Super gedaan. Fijne dag op school!</p>
-    <button class="ctl" id="closeCelebrate" type="button">Sluiten</button>
+    <div class="celebrate-actions">
+      <button class="ctl" id="closeCelebrate" type="button">Sluiten</button>
+      <button class="ctl" id="restartBtn" type="button">Opnieuw beginnen</button>
+    </div>
   </div>
 </div>
 <canvas id="confetti" hidden></canvas>
@@ -357,12 +376,16 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
       return;
     }
     clearTimeout(resetTimer); disarm();
+    resetAll();
+  });
+  function resetAll(){
     state.done = []; save();
     tiles.forEach(function(tile, k){
       setTimeout(function(){ tile.setAttribute('aria-pressed', 'false'); }, reduced ? 0 : k * 45);
     });
     updateProgress();
-  });
+  }
+  document.getElementById('restartBtn').addEventListener('click', function(){ hideCelebrate(); resetAll(); });
 
   /* Nieuwe dag: kaart begint weer leeg */
   function checkNewDay(){
@@ -395,3 +418,6 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ document.body.classList.remove('no-anim'); }); });
 })();
 </script>
+
+</body>
+</html>
