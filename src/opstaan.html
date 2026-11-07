@@ -17,7 +17,7 @@
 :root{
   --bg:#FFF8EC; --ink:#2B2340; --ink-soft:#54486F; --line:rgba(43,35,64,.14); --white:#FFFFFF;
   --yellow:#FFE38A; --peach:#FFD0A6; --pink:#FFC2D6; --lilac:#D9C8FF; --blue:#BFE3FF; --mint:#BFEFD0;
-  --done-bg:#E3F7EA; --done:#1F8F52; --done-ink:#145C35; --gold:#FFD54A; --sun:#8A5300; --focus:#3B6FE0;
+  --done-bg:#E3F7EA; --done:#1F8F52; --done-ink:#145C35; --gold:#FFD54A; --locked:#E4DEEE; --sun:#8A5300; --focus:#3B6FE0;
   --font:'Fredoka','Nunito','Trebuchet MS',system-ui,sans-serif;
   color-scheme: light;
 }
@@ -76,10 +76,16 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
 .final .back .done-text{color:var(--ink)}
 @container (min-aspect-ratio: 3/2){
   .final .face{flex-direction:row;gap:6cqmin}
-  .final .back .stack{display:flex;flex-direction:column;align-items:flex-start;gap:2cqmin}
+  .final .stack{display:flex;flex-direction:column;align-items:flex-start;gap:2cqmin}
 }
-.final .back .stack{display:flex;flex-direction:column;align-items:center;gap:2cqmin}
+.final .stack{display:flex;flex-direction:column;align-items:center;gap:2cqmin}
 .final.ready:not([aria-pressed="true"]) .front{animation:glow 1.6s ease-in-out infinite}
+.final.locked .front{background:var(--locked);box-shadow:inset 0 0 0 3px var(--line),0 5px 0 rgba(43,35,64,.10)}
+.final.locked .front .label{color:var(--ink-soft)}
+.final.locked .front .icons img{filter:grayscale(1);opacity:.45}
+.lock-note{display:inline-flex;align-items:center;gap:.35em;font-size:max(13px,8cqmin);font-weight:600;padding:.2em .8em;border-radius:999px;background:var(--white);color:var(--ink-soft);white-space:nowrap}
+.lock-note svg{width:1em;height:1em;flex:none}
+.final:not(.locked) .lock-note{display:none}
 @keyframes glow{
   0%,100%{box-shadow:0 5px 0 rgba(43,35,64,.13),0 0 0 0 rgba(255,213,74,0)}
   50%{box-shadow:0 5px 0 rgba(43,35,64,.13),0 0 0 9px rgba(255,213,74,.95)}
@@ -188,6 +194,7 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
   var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   var SOUND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
   var SOUND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M16 9.5l5 5"/><path d="M21 9.5l-5 5"/></svg>';
+  var LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
   var SPARK = ['#FFD54A','#FF8FB1','#7EC8FF','#9A7BFF','#5CC77E','#FF9F5A'];
 
   function today(){
@@ -224,7 +231,9 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     b.setAttribute('aria-label', t.final ? 'Klaar' : 'Stap '+t.n+': '+t.label + (t.soms ? ' (soms)' : ''));
     var num = t.final ? '' : '<span class="num">'+t.n+'</span>';
     var soms = t.soms ? '<span class="soms">soms</span>' : '';
-    var front = '<span class="face front" aria-hidden="true">'+num+iconsHtml(t)+'</span><span class="label">'+t.label+'</span>'+soms+'</span>';
+    var front = t.final
+      ? '<span class="face front" aria-hidden="true">'+iconsHtml(t)+'</span><span class="stack"><span class="label">'+t.label+'</span><span class="lock-note">'+LOCK_SVG+'<span class="lock-text"></span></span></span></span>'
+      : '<span class="face front" aria-hidden="true">'+num+iconsHtml(t)+'</span><span class="label">'+t.label+'</span>'+soms+'</span>';
     var back;
     if (t.final) {
       back = '<span class="face back" aria-hidden="true">'+iconsHtml(t)+'</span><span class="stack"><span class="label">Super gedaan!</span><span class="done-text">Op naar een fijne dag</span></span></span>';
@@ -247,7 +256,19 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     } else {
       progressText.innerHTML = '<b>'+count+'</b> van '+TOTAL+' gedaan';
     }
-    tiles[TASKS.length-1].classList.toggle('ready', count >= TOTAL);
+    var fin = tiles[TASKS.length-1];
+    var locked = count < TOTAL;
+    var left = TOTAL - count;
+    fin.classList.toggle('ready', !locked);
+    fin.classList.toggle('locked', locked);
+    fin.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    fin.querySelector('.lock-text').textContent = left === 1 ? 'Nog 1 stap' : 'Nog '+left+' stappen';
+    fin.setAttribute('aria-label', locked ? 'Klaar, nog '+(left === 1 ? '1 stap' : left+' stappen')+' te gaan' : 'Klaar');
+    if (locked && isDone(16)) {
+      state.done = state.done.filter(function(n){ return n !== 16; });
+      fin.setAttribute('aria-pressed', 'false');
+      save();
+    }
   }
   function paint(){
     TASKS.forEach(function(t, i){ tiles[i].setAttribute('aria-pressed', isDone(t.n) ? 'true' : 'false'); });
@@ -372,6 +393,13 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
 
   function toggle(i){
     var t = TASKS[i];
+    if (t.final && tiles[i].classList.contains('locked')) {
+      if (!reduced && tiles[i].animate) {
+        tiles[i].animate([{transform:'translateX(0)'},{transform:'translateX(-10px)'},{transform:'translateX(9px)'},{transform:'translateX(-6px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}], {duration:450, easing:'ease-out'});
+      }
+      chime([392, 330], 0.12);
+      return;
+    }
     var on = !isDone(t.n);
     if (on) state.done.push(t.n);
     else state.done = state.done.filter(function(n){ return n !== t.n; });
