@@ -276,48 +276,50 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     updateProgress();
   }
 
-  /* Geluid. iOS: audiosessie op "playback" zodat de stilschakelaar het niet dempt (iOS 17+),
-     en de audio één keer ontgrendelen binnen een tik. */
-  var actx = null;
-  function getCtx(){
-    if (!actx) {
-      /* alleen op iPhone en iPad: daar dempt de stilschakelaar anders het geluid */
-      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      try { if (isIOS && navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e) {}
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function unlockAudio(){
-    var c = getCtx(); if (!c) return;
-    try {
-      var b = c.createBuffer(1, 1, 22050), src = c.createBufferSource();
-      src.buffer = b; src.connect(c.destination); src.start(0);
-      if (c.state !== 'running') c.resume();
-    } catch(e) {}
-  }
-  ['touchend','pointerdown','click'].forEach(function(ev){ document.addEventListener(ev, unlockAudio, {capture:true, passive:true}); });
-  function playNotes(c, freqs, gap){
-    var t0 = c.currentTime + 0.03;
+  /* Geluid: korte belletjes, vooraf als WAV gemaakt en afgespeeld met een <audio>-element.
+     Dat werkt ook in de beginscherm-app op iPhone en iPad, waar Web Audio vaak stil blijft,
+     en een <audio>-element speelt ook als de stilschakelaar aan staat. Elk geluid start
+     direct binnen een tik, anders houdt iOS het tegen. */
+  function makeWav(freqs, gap){
+    var rate = 22050, noteLen = 0.5, gapS = gap || 0.09;
+    var total = Math.ceil((0.02 + gapS * (freqs.length - 1) + noteLen + 0.05) * rate);
+    var pcm = new Float32Array(total);
     freqs.forEach(function(f, k){
-      var o = c.createOscillator(), g = c.createGain();
-      o.type = 'triangle'; o.frequency.value = f;
-      var t = t0 + k * (gap || 0.09);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-      o.connect(g); g.connect(c.destination);
-      o.start(t); o.stop(t + 0.55);
+      var start = Math.floor((0.02 + k * gapS) * rate);
+      var len = Math.floor(noteLen * rate);
+      for (var i = 0; i < len && start + i < total; i++){
+        var t = i / rate;
+        var env = t < 0.02 ? t / 0.02 : Math.exp(-(t - 0.02) * 9);
+        var tri = 4 * Math.abs(((t * f) % 1) - 0.5) - 1;
+        pcm[start + i] += tri * env * 0.32;
+      }
     });
+    var buf = new ArrayBuffer(44 + total * 2), v = new DataView(buf);
+    function str(o, s){ for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, 'RIFF'); v.setUint32(4, 36 + total * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, total * 2, true);
+    for (var j = 0; j < total; j++){
+      var s = Math.max(-1, Math.min(1, pcm[j]));
+      v.setInt16(44 + j * 2, Math.round(s * 32767), true);
+    }
+    return URL.createObjectURL(new Blob([buf], {type: 'audio/wav'}));
   }
-  function chime(freqs, gap){
-    if (!state.sound) return;
+  var SOUNDS = {};
+  try {
+    SOUNDS.done = makeWav([1046.5, 1318.5]);
+    SOUNDS.undo = makeWav([523.25]);
+    SOUNDS.locked = makeWav([392, 330], 0.12);
+    SOUNDS.party = makeWav([784, 988, 1175, 1568], 0.12);
+    SOUNDS.on = makeWav([880]);
+  } catch(e) {}
+  function chime(name){
+    if (!state.sound || !SOUNDS[name]) return;
     try {
-      var c = getCtx(); if (!c) return;
-      if (c.state === 'running') playNotes(c, freqs, gap);
-      else c.resume().then(function(){ playNotes(c, freqs, gap); }).catch(function(){});
+      var a = new Audio(SOUNDS[name]);
+      var p = a.play();
+      if (p && p.catch) p.catch(function(){});
     } catch(e) {}
   }
   var soundBtn = document.getElementById('soundBtn');
@@ -326,7 +328,7 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     soundBtn.setAttribute('aria-pressed', state.sound ? 'true' : 'false');
     soundBtn.setAttribute('aria-label', state.sound ? 'Geluid staat aan' : 'Geluid staat uit');
   }
-  soundBtn.addEventListener('click', function(){ state.sound = !state.sound; paintSound(); save(); if (state.sound) chime([880]); });
+  soundBtn.addEventListener('click', function(){ state.sound = !state.sound; paintSound(); save(); if (state.sound) chime('on'); });
 
   /* Sterretjes rond een tegel */
   function burst(el){
@@ -385,7 +387,6 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
   function showCelebrate(){
     celebrate.hidden = false;
     confetti();
-    chime([784, 988, 1175, 1568], 0.12);
     closeBtn.focus();
   }
   function hideCelebrate(){ celebrate.hidden = true; }
@@ -398,7 +399,7 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
       if (!reduced && tiles[i].animate) {
         tiles[i].animate([{transform:'translateX(0)'},{transform:'translateX(-10px)'},{transform:'translateX(9px)'},{transform:'translateX(-6px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}], {duration:450, easing:'ease-out'});
       }
-      chime([392, 330], 0.12);
+      chime('locked');
       return;
     }
     var on = !isDone(t.n);
@@ -409,10 +410,10 @@ h1{margin:0;font-size:40px;line-height:1;font-weight:700;text-wrap:balance}
     save();
     if (on) {
       burst(tiles[i]);
-      if (t.final) setTimeout(showCelebrate, reduced ? 0 : 650);
-      else chime([1046.5, 1318.5]);
+      if (t.final) { chime('party'); setTimeout(showCelebrate, reduced ? 0 : 650); }
+      else chime('done');
     } else {
-      chime([523.25]);
+      chime('undo');
     }
   }
 
